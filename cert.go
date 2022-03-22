@@ -15,6 +15,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -165,12 +166,37 @@ func (m *mkcert) printHosts(hosts []string) {
 
 func (m *mkcert) generateKey(rootCA bool) (crypto.PrivateKey, error) {
 	if m.ecdsa {
-		return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		switch m.bits {
+		case 0, 256:
+			return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		case 384:
+			return ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		case 521:
+			return ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		default:
+			return nil, fmt.Errorf("unknown key bits for ECDSA key: %v", m.bits)
+		}
 	}
-	if rootCA {
+	switch m.bits {
+	case 0:
+		if rootCA {
+			return rsa.GenerateKey(rand.Reader, 3072)
+		}
+		return rsa.GenerateKey(rand.Reader, 2048)
+	case 1024:
+		log.Println("\nReminder: RSA/1024 is INSECURE; DO NOT USE FOR PRODUCTION SYSTEMS")
+		return rsa.GenerateKey(rand.Reader, 1024)
+	case 2048:
+		return rsa.GenerateKey(rand.Reader, 2048)
+	case 3072:
 		return rsa.GenerateKey(rand.Reader, 3072)
+	case 4096:
+		return rsa.GenerateKey(rand.Reader, 4096)
+	case 8192:
+		return rsa.GenerateKey(rand.Reader, 8192)
+	default:
+		return nil, fmt.Errorf("unknown key bits for RSA key: %v", m.bits)
 	}
-	return rsa.GenerateKey(rand.Reader, 2048)
 }
 
 func (m *mkcert) fileNames(hosts []string) (certFile, keyFile, p12File string) {
