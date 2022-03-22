@@ -1,4 +1,4 @@
-module filippo.io/mkcert
+module github.com/cipherboy/mkcert
 
 go 1.13
 
